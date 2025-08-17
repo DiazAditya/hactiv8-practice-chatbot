@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatForm = document.getElementById('chat-form');
   const userInput = document.getElementById('user-input');
   const chatBox = document.getElementById('chat-box');
+  const submitButton = chatForm.querySelector('button[type="submit"]');
 
   let conversationHistory = [];
 
@@ -12,14 +13,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!userMessage) {
       return;
     }
+    
+    // Disable form while waiting for response
+    userInput.disabled = true;
+    submitButton.disabled = true;
 
-    // Add user message to UI and history
     appendMessage('user', userMessage);
     conversationHistory.push({ role: 'user', content: userMessage });
     userInput.value = '';
 
-    // Show "Thinking..." message
     const thinkingMessage = appendMessage('model', 'Thinking...');
+    thinkingMessage.classList.add('thinking'); // Add thinking animation class
 
     try {
       const response = await fetch('/chat', {
@@ -39,29 +43,37 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
       const botResponse = data.response || 'Sorry, no response received.';
 
-      // Replace "Thinking..." with the actual response
+      thinkingMessage.classList.remove('thinking'); // Remove animation
       thinkingMessage.textContent = botResponse;
       
-      // Add bot response to history
       conversationHistory.push({ role: 'model', content: botResponse });
 
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = 'Failed to get response from server.';
-      // Update the message on error
+      const errorMessage = 'Failed to get response from the server. Please try again.';
+      thinkingMessage.classList.remove('thinking');
       thinkingMessage.textContent = errorMessage;
-      // Add error message to history to avoid losing user's message context
       conversationHistory.push({ role: 'model', content: errorMessage });
+    } finally {
+        // Re-enable form
+        userInput.disabled = false;
+        submitButton.disabled = false;
+        userInput.focus();
     }
   });
 
   function appendMessage(role, content) {
+    const messageWrapper = document.createElement('div');
+    messageWrapper.style.display = 'flex';
+    messageWrapper.style.justifyContent = role === 'user' ? 'flex-end' : 'flex-start';
+
     const messageElement = document.createElement('div');
-    // Use 'user' and 'model' classes for styling
     messageElement.classList.add('message', role);
     messageElement.textContent = content;
-    chatBox.appendChild(messageElement);
-    chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+    
+    messageWrapper.appendChild(messageElement);
+    chatBox.appendChild(messageWrapper);
+    chatBox.scrollTop = chatBox.scrollHeight;
     return messageElement;
   }
 });
